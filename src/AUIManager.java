@@ -22,20 +22,24 @@ class AUIManager implements KeyListener {
 //  private static final double speed = 300000;
   private static final double speed = 300d;
   
-  private float[] camera_sizes = {0.1f, 0.25f, 0.4f, 0.5f, 0.75f, 0.8f, 0.9f, 1f, 1.1f, 1.25f, 1.5f, 1.75f, 2f, 3f, 4f, 5f, 10f, 20f, 30f, 40f};
-  private int current_camera_size_index = 7;
+  private float[] camera_sizes =
+    {0.01f, 0.05f, 0.1f, 0.25f, 0.4f, 0.5f, 0.75f, 0.8f, 0.9f, 1f, 1.1f, 1.25f, 1.5f, 1.75f, 2f};
+  private int current_camera_size_index = 9;
   
-  private float[] update_speeds = {1, 50, 100, 200, 400, 500, 1000, 2000, 5000, 10000, 100000, 500000};
+  private float[] update_speeds = {1, 10, 25, 50, 100, 200, 400, 500, 1000, 2000, 5000, 10000, 100000, 500000};
   private int current_update_speed_index = 5;
-  private double new_update_speed = -1d;
+  private double new_update_speed;
   
   private ArrayList<AAnt> recent_ants;
   private AGrid recent_grid;
+  private long recent_update_number;
   
   public AUIManager(Dimension window_size, Dimension camera_size, Dimension simulation_size) {
     this.window_size = window_size;
     this.camera_size = camera_size;
     this.simulation_size = simulation_size;
+  
+    new_update_speed = update_speeds[current_update_speed_index];
     
     // -------------------
     // -- Setup Display --
@@ -73,9 +77,10 @@ class AUIManager implements KeyListener {
     movements = new boolean[4];
   }
   
-  private float getCameraMultiplier() {
+  public float getCameraMultiplier() {
     return camera_sizes[current_camera_size_index];
   }
+  public float getUpdateSpeed() {return update_speeds[current_update_speed_index]; }
   
   private int[] getCameraSize() {
     int[] i = new int[2];
@@ -95,14 +100,11 @@ class AUIManager implements KeyListener {
     camera.resize(size[0], size[1]);
   }
   
-  public void draw() {
-    canvas.repaint();
-  }
-  
-  public void update(double simTime, ArrayList<AAnt> new_ants, AGrid new_grid) {
+  public void update(double simTime, ArrayList<AAnt> new_ants, AGrid new_grid, long update_number) {
     
     this.recent_ants = new_ants;
     this.recent_grid = new_grid;
+    this.recent_update_number = update_number;
     
     double xVel = 0;
     double yVel = 0;
@@ -120,6 +122,7 @@ class AUIManager implements KeyListener {
     }
     
     camera.move(xVel / 1e9 * simTime * speed, yVel / 1e9 * simTime * speed);
+    canvas.repaint();
   }
   
   public void handleKey(KeyEvent e, boolean pressed) {
@@ -200,7 +203,7 @@ class AUIManager implements KeyListener {
           if (current_update_speed_index == update_speeds.length) {
             current_update_speed_index = update_speeds.length - 1;
           }
-          new_update_speed = update_speeds[current_update_speed_index];
+          new_update_speed = getUpdateSpeed();
         }
         break;
       case KeyEvent.VK_F :
@@ -209,7 +212,7 @@ class AUIManager implements KeyListener {
           if (current_update_speed_index < 0) {
             current_update_speed_index = 0;
           }
-          new_update_speed = update_speeds[current_update_speed_index];
+          new_update_speed = getUpdateSpeed();
         }
         break;
     }
@@ -223,6 +226,7 @@ class AUIManager implements KeyListener {
   public void keyReleased(KeyEvent e) {
     handleKey(e, false);
   }
+  
   @Override
   public void keyTyped(KeyEvent e) {}
   
@@ -242,6 +246,10 @@ class AUIManager implements KeyListener {
   
   public ArrayList<AAnt> getRecentAnts() {
     return recent_ants;
+  }
+  
+  public long getUpdateNumber() {
+    return recent_update_number;
   }
   
 }
@@ -264,7 +272,9 @@ class ACanvas extends JPanel {
     BufferedImage image = camera.generateImage(grid, ants);
     Color fontColor = new Color(255,255,255);
     Font font = new Font("Serif", Font.PLAIN, 16);
-    String text = "Test";
+    String text = "Update #" + manager.getUpdateNumber();
+    String text2 = "Zoom: " + manager.getCameraMultiplier();
+    String text3 = "Updates per second: " + manager.getUpdateSpeed();
   
     /*
     BufferStrategy b = this.getBufferStrategy();
@@ -280,7 +290,9 @@ class ACanvas extends JPanel {
   
     g.setColor(fontColor);
     g.setFont(font);
-    g.drawString(text, 100, 100);
+    g.drawString(text, 5, 17);
+    g.drawString(text3, 5, 17 * 2);
+    g.drawString(text2, 5, 17 * 3);
   
     //g.dispose();
     //b.show();

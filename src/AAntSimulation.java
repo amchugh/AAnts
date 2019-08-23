@@ -4,22 +4,34 @@ import java.util.Random;
 
 public class AAntSimulation implements Runnable {
   
-  public static boolean DEBUG = false;
-  
   public static void main(String[] args) {
+    
     try {
-      if (args[0].equals("debug"))
-        DEBUG = true;
+      int ssize = Integer.parseInt(args[1]);
+      simulation_size = new Dimension(ssize, ssize);
+      starting_camera_size = new Dimension(ssize/2, ssize/2);
     } catch (Exception e) {
     
     }
-    new AAntSimulation();
+    try {
+      int wsize = Integer.parseInt(args[0]);
+      window_size = new Dimension(wsize, wsize);
+    } catch (Exception e) {
+    
+    }
+    int numants = 30;
+    try {
+      numants = Integer.parseInt(args[2]);
+    } catch (Exception e) {
+    
+    }
+    new AAntSimulation(numants);
   }
   
   private double delayTime;
-  private static final Dimension simulation_size = new Dimension(10000,10000);
-  private static final Dimension window_size = new Dimension(1000,1000);
-  private static final Dimension starting_camera_size = new Dimension(500,500);
+  private static Dimension simulation_size = new Dimension(1000,1000);
+  private static Dimension window_size = new Dimension(1000,1000);
+  private static Dimension starting_camera_size = new Dimension(500,500);
   
   private ArrayList<AAnt> ants;
   
@@ -30,7 +42,9 @@ public class AAntSimulation implements Runnable {
   private AUIManager ui;
   private AGrid grid;
   
-  public AAntSimulation() {
+  private long updateNumber;
+  
+  public AAntSimulation(int number_of_ants) {
     // Create the UI Manager
     ui = new AUIManager(window_size, starting_camera_size, simulation_size);
   
@@ -43,29 +57,18 @@ public class AAntSimulation implements Runnable {
     
     Random r = new Random();
     
-    for (int i = 40; i > 0; i--) {
+    for (int i = number_of_ants; i > 0; i--) {
       addAntAtRandomPositon(r);
     }
-    /*
-    AAnt q = new AAnt(simulation_size.width/2, simulation_size.height/2, false, simulation_size, wall_black, 1);
-    q.isQueen = true;
-    ants.add(q);
-  
-    AAnt q2 = new AAnt(simulation_size.width/2, simulation_size.height/2 + 50, false, simulation_size, wall_perm, 1);
-    q2.isQueen = true;
-    ants.add(q2);
-    */
+    
     new Thread(this).start();
-  
-    // -----------------------------------------
-    // -- This thread shall be used for input --
-    // -----------------------------------------
   }
   
   public void addAntAtRandomPositon(Random r) {
     int x = randomInRange(r, 0, simulation_size.width);
     int y = randomInRange(r, 0, simulation_size.height);
     int wpt = (r.nextBoolean()?wall_black:wall_perm);
+    wpt = wall_black;
     int lives = randomInRange(r, 10000, 100000);
     lives = -1;
     addAnt(x,y, r.nextBoolean(), wpt, r, lives);
@@ -79,6 +82,7 @@ public class AAntSimulation implements Runnable {
   
   public void run() {
     long pastUpdateTime = System.nanoTime();
+    long lastUIUpdate = System.nanoTime();
     
     while (true) {
     
@@ -87,15 +91,16 @@ public class AAntSimulation implements Runnable {
       if (time - pastUpdateTime > delayTime) {
         pastUpdateTime += delayTime;
         tick();
-        ui.update(delayTime, ants, grid);
+        
         double new_speed = ui.getNewSpeed();
         if (new_speed != -1d) {
           delayTime = calculateDelayTime(new_speed);
         }
       }
-    
-      draw();
-    
+      
+      ui.update(time - lastUIUpdate, ants, grid, updateNumber);
+      lastUIUpdate = time;
+      
     }
   }
   
@@ -152,6 +157,7 @@ public class AAntSimulation implements Runnable {
     }
     
     ants = survivors;
+    updateNumber++;
     
   }
   
@@ -202,9 +208,7 @@ public class AAntSimulation implements Runnable {
 //  }
   
   private void draw() {
-    
-    ui.draw();
-    
+  
   }
   
   private double calculateDelayTime(double updates_per_second) {
